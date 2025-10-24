@@ -1,4 +1,4 @@
-// Existing Comps Transformer - JavaScript Version
+// Existing Comps Transformer - JavaScript Version (with ExcelJS for full formatting)
 // Converts raw MLS data to formatted, quartile-analyzed comps
 
 let processedWorkbook = null;
@@ -104,11 +104,8 @@ function processFile(file) {
             updateProgress(30);
             showProgress('Processing data...');
             
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            
-            updateProgress(50);
-            transformData(workbook);
+            const data = e.target.result;
+            transformData(data);
             
         } catch (error) {
             showError(`Error reading file: ${error.message}`);
@@ -122,34 +119,70 @@ function processFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
-function transformData(workbook) {
+async function transformData(data) {
     try {
-        // Step 1: Find and read the raw data sheet
+        // Step 1: Read the workbook with ExcelJS
         showProgress('Loading raw data...');
-        updateProgress(60);
+        updateProgress(40);
         
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(data);
+        
+        updateProgress(50);
+        
+        // Find the data sheet
+        let worksheet;
         let sheetName = 'Existing Comps Data';
         
+        worksheet = workbook.getWorksheet(sheetName);
+        
         // If "Existing Comps Data" doesn't exist, try to use the only sheet if there's just one
-        if (!workbook.SheetNames.includes(sheetName)) {
-            if (workbook.SheetNames.length === 1) {
-                sheetName = workbook.SheetNames[0];
+        if (!worksheet) {
+            if (workbook.worksheets.length === 1) {
+                worksheet = workbook.worksheets[0];
+                sheetName = worksheet.name;
                 console.log(`Using single sheet: "${sheetName}"`);
             } else {
-                throw new Error(`Sheet "Existing Comps Data" not found. Your file has ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}. Please make sure your raw data sheet is named "Existing Comps Data".`);
+                const sheetNames = workbook.worksheets.map(ws => ws.name).join(', ');
+                throw new Error(`Sheet "Existing Comps Data" not found. Your file has ${workbook.worksheets.length} sheets: ${sheetNames}. Please make sure your raw data sheet is named "Existing Comps Data".`);
             }
         }
-
-        const rawSheet = workbook.Sheets[sheetName];
-        const rawData = XLSX.utils.sheet_to_json(rawSheet);
+        
+        // Step 2: Extract data
+        showProgress('Extracting data...');
+        updateProgress(60);
+        
+        const rawData = [];
+        const headers = [];
+        
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) {
+                // Header row
+                row.eachCell((cell) => {
+                    headers.push(cell.value);
+                });
+            } else {
+                // Data rows
+                const rowData = {};
+                row.eachCell((cell, colNumber) => {
+                    const header = headers[colNumber - 1];
+                    if (header) {
+                        rowData[header] = cell.value;
+                    }
+                });
+                if (Object.keys(rowData).length > 0) {
+                    rawData.push(rowData);
+                }
+            }
+        });
         
         if (rawData.length === 0) {
             throw new Error('No data found in the sheet.');
         }
-
-        // Step 2: Filter to relevant columns
+        
+        // Step 3: Filter columns
         showProgress('Filtering columns...');
-        updateProgress(70);
+        updateProgress(65);
         
         const filteredData = rawData.map(row => {
             const newRow = {};
@@ -158,20 +191,20 @@ function transformData(workbook) {
             });
             return newRow;
         });
-
-        // Step 3: Sort by Sold Price (descending)
+        
+        // Step 4: Sort by Sold Price (descending)
         showProgress('Sorting by price...');
-        updateProgress(75);
+        updateProgress(70);
         
         filteredData.sort((a, b) => {
             const priceA = parseFloat(a['Sold Price']) || 0;
             const priceB = parseFloat(b['Sold Price']) || 0;
             return priceB - priceA;
         });
-
-        // Step 4: Calculate quartiles
+        
+        // Step 5: Calculate quartiles
         showProgress('Calculating quartiles...');
-        updateProgress(80);
+        updateProgress(75);
         
         const nRows = filteredData.length;
         const qSize = Math.ceil(nRows / 4);
@@ -201,73 +234,71 @@ function transformData(workbook) {
             quartileAvgPrices: `Q1: $${avgQ1.toLocaleString()}\nQ2: $${avgQ2.toLocaleString()}\nQ3: $${avgQ3.toLocaleString()}\nQ4: $${avgQ4.toLocaleString()}`
         };
 
-        // Step 5: Create new workbook
+        // Step 6: Create formatted workbook
         showProgress('Creating formatted workbook...');
-        updateProgress(85);
+        updateProgress(80);
         
-        processedWorkbook = createFormattedWorkbook(filteredData, q1End, q2End, q3End);
+        processedWorkbook = await createFormattedWorkbook(filteredData, q1End, q2End, q3End);
 
-        // Step 6: Done!
+        // Step 7: Done!
         updateProgress(100);
         showResults();
 
     } catch (error) {
+        console.error(error);
         showError(`Error transforming data: ${error.message}`);
     }
 }
 
-function createFormattedWorkbook(data, q1End, q2End, q3End) {
-    const wb = XLSX.utils.book_new();
-    const ws = {};
+async function createFormattedWorkbook(data, q1End, q2End, q3End) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Existing Comps');
     
     // Set column widths
-    const colWidths = [
-        { wch: 5 },   // A
-        { wch: 5 },   // B
-        { wch: 12 },  // C - Acres
-        { wch: 15 },  // D - City
-        { wch: 10 },  // E - DOM
-        { wch: 15 },  // F - Garage Capacity
-        { wch: 12 },  // G - List Price
-        { wch: 18 },  // H - Original List Price
-        { wch: 18 },  // I - Price Per Square Foot
-        { wch: 15 },  // J - Sold Concessions
-        { wch: 12 },  // K - Sold Date
-        { wch: 12 },  // L - Sold Price
-        { wch: 15 },  // M - Total Bedrooms
-        { wch: 15 },  // N - Total Bathrooms
-        { wch: 18 },  // O - Total Square Feet
-        { wch: 12 },  // P - Year Built
-        { wch: 15 }   // Q - Property Type
-    ];
-    ws['!cols'] = colWidths;
-
-    // Header section (rows 1-13)
+    const columnWidths = [5, 5, 12, 15, 10, 15, 12, 18, 18, 15, 12, 12, 15, 15, 18, 12, 15];
+    worksheet.columns = columnWidths.map(width => ({ width }));
+    
     // Row 2: Title
-    setCellValue(ws, 'C2', 'Existing Sold Comps', { bold: true, fontSize: 14 });
+    const titleCell = worksheet.getCell('C2');
+    titleCell.value = 'Existing Sold Comps';
+    titleCell.font = { bold: true, size: 14 };
     
     // Row 3: Subdivision and quartile headers
-    setCellValue(ws, 'C3', 'Pagoda Grove Circle', { bold: true });
-    setCellValue(ws, 'I3', '1st Quartile', { bold: true, align: 'center' });
-    setCellValue(ws, 'J3', '2nd Quartile', { bold: true, align: 'center' });
-    setCellValue(ws, 'K3', '3rd Quartile', { bold: true, align: 'center' });
-    setCellValue(ws, 'L3', '4th Quartile', { bold: true, align: 'center' });
-
+    const subdivCell = worksheet.getCell('C3');
+    subdivCell.value = 'Pagoda Grove Circle';
+    subdivCell.font = { bold: true };
+    
+    const quartileHeaders = [
+        { cell: 'I3', value: '1st Quartile' },
+        { cell: 'J3', value: '2nd Quartile' },
+        { cell: 'K3', value: '3rd Quartile' },
+        { cell: 'L3', value: '4th Quartile' }
+    ];
+    
+    quartileHeaders.forEach(({ cell, value }) => {
+        const c = worksheet.getCell(cell);
+        c.value = value;
+        c.font = { bold: true };
+        c.alignment = { horizontal: 'center' };
+    });
+    
     // Row 5: Count
-    setCellValue(ws, 'C5', 'Count');
-    setCellValue(ws, 'D5', data.length);
-
+    worksheet.getCell('C5').value = 'Count';
+    worksheet.getCell('D5').value = data.length;
+    
     // Row 6: Quartile Size
-    setCellValue(ws, 'C6', 'Quartile Size');
-    setCellValue(ws, 'D6', { f: 'D5/4' });
-
+    worksheet.getCell('C6').value = 'Quartile Size';
+    worksheet.getCell('D6').value = { formula: 'D5/4' };
+    
     // Row 7-11: Criteria
-    setCellValue(ws, 'C7', 'Criteria');
-    setCellValue(ws, 'C8', 'Sold last year');
-    setCellValue(ws, 'C9', 'South of 7800, West of 2200, N');
-    setCellValue(ws, 'C10', 'SFH, not manufactured');
-    setCellValue(ws, 'C11', 'Sorted by Sold Price', { bold: true });
-
+    worksheet.getCell('C7').value = 'Criteria';
+    worksheet.getCell('C8').value = 'Sold last year';
+    worksheet.getCell('C9').value = 'South of 7800, West of 2200, N';
+    worksheet.getCell('C10').value = 'SFH, not manufactured';
+    const sortedCell = worksheet.getCell('C11');
+    sortedCell.value = 'Sorted by Sold Price';
+    sortedCell.font = { bold: true };
+    
     // Statistics with formulas
     const stats = [
         { label: 'Avg Sold Price', col: 'L', row: 4 },
@@ -278,24 +309,25 @@ function createFormattedWorkbook(data, q1End, q2End, q3End) {
         { label: 'Avg DOM', col: 'E', row: 9 },
         { label: 'Avg Price/SF', col: 'I', row: 10 }
     ];
-
+    
     stats.forEach(stat => {
-        setCellValue(ws, `H${stat.row}`, stat.label, { bold: true });
-        setCellValue(ws, `I${stat.row}`, { f: `AVERAGE(${stat.col}$15:${stat.col}$${14 + q1End})` });
-        setCellValue(ws, `J${stat.row}`, { f: `AVERAGE(${stat.col}$${15 + q1End}:${stat.col}$${14 + q2End})` });
-        setCellValue(ws, `K${stat.row}`, { f: `AVERAGE(${stat.col}$${15 + q2End}:${stat.col}$${14 + q3End})` });
-        setCellValue(ws, `L${stat.row}`, { f: `AVERAGE(${stat.col}$${15 + q3End}:${stat.col}$${14 + data.length})` });
+        const labelCell = worksheet.getCell(`H${stat.row}`);
+        labelCell.value = stat.label;
+        labelCell.font = { bold: true };
+        
+        worksheet.getCell(`I${stat.row}`).value = { formula: `AVERAGE(${stat.col}$15:${stat.col}$${14 + q1End})` };
+        worksheet.getCell(`J${stat.row}`).value = { formula: `AVERAGE(${stat.col}$${15 + q1End}:${stat.col}$${14 + q2End})` };
+        worksheet.getCell(`K${stat.row}`).value = { formula: `AVERAGE(${stat.col}$${15 + q2End}:${stat.col}$${14 + q3End})` };
+        worksheet.getCell(`L${stat.row}`).value = { formula: `AVERAGE(${stat.col}$${15 + q3End}:${stat.col}$${14 + data.length})` };
     });
-
+    
     // Row 14: Column headers
-    COLUMNS_TO_KEEP.forEach((colName, idx) => {
-        const cellRef = XLSX.utils.encode_cell({ r: 13, c: idx + 2 }); // Start at column C (index 2)
-        setCellValue(ws, cellRef, colName, { bold: true });
-    });
-
+    worksheet.getRow(14).values = ['', '', ...COLUMNS_TO_KEEP];
+    worksheet.getRow(14).font = { bold: true };
+    
     // Data rows starting at row 15
     data.forEach((row, rowIdx) => {
-        const excelRow = rowIdx + 15; // Start at row 15 (0-indexed: row 14)
+        const excelRow = rowIdx + 15;
         
         // Determine quartile for coloring
         let quartile;
@@ -303,67 +335,26 @@ function createFormattedWorkbook(data, q1End, q2End, q3End) {
         else if (rowIdx < q2End) quartile = 2;
         else if (rowIdx < q3End) quartile = 3;
         else quartile = 4;
-
-        COLUMNS_TO_KEEP.forEach((colName, colIdx) => {
-            const cellRef = XLSX.utils.encode_cell({ r: excelRow - 1, c: colIdx + 2 });
-            const value = row[colName];
-            setCellValue(ws, cellRef, value, { bgColor: QUARTILE_COLORS[quartile] });
-        });
-    });
-
-    // Set row range
-    ws['!ref'] = `A1:Q${14 + data.length}`;
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Existing Comps');
-    return wb;
-}
-
-function setCellValue(ws, cellRef, value, style = {}) {
-    const cell = { v: value };
-
-    // Handle formulas
-    if (value && typeof value === 'object' && value.f) {
-        cell.f = value.f;
-        delete cell.v;
-    } else {
-        // Determine cell type
-        if (typeof value === 'number') {
-            cell.t = 'n';
-        } else if (typeof value === 'boolean') {
-            cell.t = 'b';
-        } else if (value instanceof Date) {
-            cell.t = 'd';
-        } else {
-            cell.t = 's';
-        }
-    }
-
-    // Apply styles
-    if (Object.keys(style).length > 0) {
-        cell.s = {};
         
-        if (style.bold) {
-            cell.s.font = { bold: true };
-            if (style.fontSize) {
-                cell.s.font.sz = style.fontSize;
-            }
-        }
+        // Set row values
+        const rowValues = ['', '', ...COLUMNS_TO_KEEP.map(col => row[col])];
+        worksheet.getRow(excelRow).values = rowValues;
         
-        if (style.align) {
-            cell.s.alignment = { horizontal: style.align };
-        }
-
-        if (style.bgColor) {
-            cell.s.fill = {
-                fgColor: { rgb: style.bgColor }
+        // Apply quartile coloring (columns C through Q)
+        for (let colIdx = 3; colIdx <= 3 + COLUMNS_TO_KEEP.length - 1; colIdx++) {
+            const cell = worksheet.getRow(excelRow).getCell(colIdx);
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF' + QUARTILE_COLORS[quartile] }
             };
         }
-    }
-
-    ws[cellRef] = cell;
+    });
+    
+    return workbook;
 }
 
-function downloadFile() {
+async function downloadFile() {
     if (!processedWorkbook) {
         showError('No processed file available. Please process a file first.');
         return;
@@ -374,21 +365,15 @@ function downloadFile() {
         const timestamp = new Date().toISOString().slice(0, 10);
         const filename = `Existing_Comps_Transformed_${timestamp}.xlsx`;
 
-        // Write workbook
-        const wbout = XLSX.write(processedWorkbook, {
-            bookType: 'xlsx',
-            type: 'array',
-            cellStyles: true
-        });
-
+        // Write workbook to buffer
+        const buffer = await processedWorkbook.xlsx.writeBuffer();
+        
         // Create blob and download
-        const blob = new Blob([wbout], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
+        const blob = new Blob([buffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        
+        saveAs(blob, filename);
 
     } catch (error) {
         showError(`Error downloading file: ${error.message}`);
@@ -438,4 +423,3 @@ function resetApp() {
     statsData = null;
     updateProgress(0);
 }
-
