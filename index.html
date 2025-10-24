@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Existing Comps Transformer</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- SheetJS library -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Existing Comps Transformer</h1>
+            <p class="subtitle">Transform raw MLS data into formatted, quartile-analyzed comps</p>
+        </header>
+
+        <main>
+            <div class="upload-section">
+                <div id="dropZone" class="drop-zone">
+                    <div class="drop-zone-content">
+                        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h2>Drop Excel file here</h2>
+                        <p>or</p>
+                        <label for="fileInput" class="btn btn-primary">
+                            Browse Files
+                        </label>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                        <p class="file-info">Supports .xlsx and .xls files</p>
+                    </div>
+                </div>
+
+                <div id="fileName" class="file-name"></div>
+            </div>
+
+            <div id="progressSection" class="progress-section" style="display: none;">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <p id="progressText" class="progress-text">Processing...</p>
+            </div>
+
+            <div id="resultsSection" class="results-section" style="display: none;">
+                <div class="success-message">
+                    <svg class="success-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <h3>Transformation Complete!</h3>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Records Processed</div>
+                        <div id="recordCount" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Price Range</div>
+                        <div id="priceRange" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Quartile Sizes</div>
+                        <div id="quartileSizes" class="stat-value">-</div>
+                    </div>
+                </div>
+
+                <button id="downloadBtn" class="btn btn-success">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; margin-right: 8px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Transformed File
+                </button>
+
+                <button id="processAnotherBtn" class="btn btn-secondary">
+                    Process Another File
+                </button>
+            </div>
+
+            <div id="errorSection" class="error-section" style="display: none;">
+                <div class="error-message">
+                    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3>Error Processing File</h3>
+                    <p id="errorText"></p>
+                </div>
+                <button id="tryAgainBtn" class="btn btn-secondary">
+                    Try Again
+                </button>
+            </div>
+        </main>
+
+        <footer>
+            <div class="info-section">
+                <h3>What This Tool Does</h3>
+                <ul>
+                    <li>✅ Filters raw MLS data to 14 relevant columns</li>
+                    <li>✅ Sorts properties by Sold Price (highest to lowest)</li>
+                    <li>✅ Divides data into 4 quartiles</li>
+                    <li>✅ Applies color coding (light to dark green)</li>
+                    <li>✅ Generates quartile statistics with Excel formulas</li>
+                    <li>✅ Creates professionally formatted spreadsheet</li>
+                </ul>
+                <p class="privacy-note">🔒 <strong>Privacy:</strong> All processing happens in your browser. Your files never leave your computer.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="transform.js"></script>
+</body>
+</html>
+
