@@ -128,9 +128,16 @@ function transformData(workbook) {
         showProgress('Loading raw data...');
         updateProgress(60);
         
-        const sheetName = 'Existing Comps Data';
+        let sheetName = 'Existing Comps Data';
+        
+        // If "Existing Comps Data" doesn't exist, try to use the only sheet if there's just one
         if (!workbook.SheetNames.includes(sheetName)) {
-            throw new Error(`Sheet "${sheetName}" not found. Please make sure your file has the correct sheet name.`);
+            if (workbook.SheetNames.length === 1) {
+                sheetName = workbook.SheetNames[0];
+                console.log(`Using single sheet: "${sheetName}"`);
+            } else {
+                throw new Error(`Sheet "Existing Comps Data" not found. Your file has ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}. Please make sure your raw data sheet is named "Existing Comps Data".`);
+            }
         }
 
         const rawSheet = workbook.Sheets[sheetName];
@@ -219,7 +226,8 @@ function createFormattedWorkbook(data, q1End, q2End, q3End) {
         { wch: 15 },  // M - Total Bedrooms
         { wch: 15 },  // N - Total Bathrooms
         { wch: 18 },  // O - Total Square Feet
-        { wch: 12 }   // P - Year Built
+        { wch: 12 },  // P - Year Built
+        { wch: 15 }   // Q - Property Type
     ];
     ws['!cols'] = colWidths;
 
@@ -293,7 +301,7 @@ function createFormattedWorkbook(data, q1End, q2End, q3End) {
     });
 
     // Set row range
-    ws['!ref'] = `A1:P${14 + data.length}`;
+    ws['!ref'] = `A1:Q${14 + data.length}`;
 
     XLSX.utils.book_append_sheet(wb, ws, 'Existing Comps');
     return wb;

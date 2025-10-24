@@ -24,7 +24,7 @@ The script performs the following transformations:
    - Acres, City, DOM, Garage Capacity
    - List Price, Original List Price, Price Per Square Foot
    - Sold Concessions, Sold Date, Sold Price
-   - Total Bedrooms, Total Bathrooms, Total Square Feet, Year Built
+   - Total Bedrooms, Total Bathrooms, Total Square Feet, Year Built, Property Type
 
 2. **Data Sorting**: Sorts all properties by Sold Price in descending order (highest to lowest)
 
@@ -100,7 +100,7 @@ EXISTING COMPS TRANSFORMATION SCRIPT
    Loaded 159 rows, 176 columns
 
 2. Selecting relevant columns...
-   Kept 14 columns
+   Kept 15 columns
 
 3. Sorting by Sold Price (descending)...
    Price range: $375,000 - $1,550,000
@@ -173,10 +173,11 @@ The script reads from the **"Existing Comps Data"** tab, which contains:
 - Raw, unsorted data
 
 ### Processing
-1. Filters to 14 relevant columns
+1. Filters to 15 relevant columns
 2. Sorts by Sold Price (descending)
 3. Divides into quartiles (40, 40, 40, 39 rows for 159 total)
 4. Generates Excel formulas for quartile averages
+5. Uses "Existing Comps Data" sheet, or the only sheet if just one exists
 
 ### Output
 Creates a new Excel file with the **"Existing Comps"** tab containing:

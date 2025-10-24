@@ -45,7 +45,8 @@ def transform_comps_data(input_file, output_file, sheet_name='Existing Comps Dat
         'Total Bedrooms',
         'Total Bathrooms',
         'Total Square Feet',
-        'Year Built'
+        'Year Built',
+        'Property Type'
     ]
     
     df_filtered = df_raw[columns_to_keep].copy()
@@ -189,7 +190,8 @@ def transform_comps_data(input_file, output_file, sheet_name='Existing Comps Dat
         'M': 15,  # Total Bedrooms
         'N': 15,  # Total Bathrooms
         'O': 18,  # Total Square Feet
-        'P': 12   # Year Built
+        'P': 12,  # Year Built
+        'Q': 15   # Property Type
     }
     
     for col, width in column_widths.items():

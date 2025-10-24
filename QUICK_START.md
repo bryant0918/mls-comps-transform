@@ -20,8 +20,9 @@ That's it! 🎉
 
 ## 📋 File Requirements
 
-Your Excel file **must have**:
-- A sheet named **"Existing Comps Data"**
+Your Excel file should have:
+- **Preferred**: A sheet named **"Existing Comps Data"**
+- **Or**: If your file has only one sheet, it will use that automatically
 - The following columns (order doesn't matter):
   - Acres
   - City
@@ -37,13 +38,14 @@ Your Excel file **must have**:
   - Total Bathrooms
   - Total Square Feet
   - Year Built
+  - Property Type
 
 💡 **Tip**: This is the standard format from MLS downloads, so your file should work without any changes!
 
 ## 🎨 What You Get
 
 The transformed file will have:
-- ✅ Only the important columns (14 instead of 176!)
+- ✅ Only the important columns (15 instead of 176!)
 - ✅ Properties sorted by price (highest to lowest)
 - ✅ Color-coded into 4 groups (quartiles):
   - **Light green** = Highest priced properties
