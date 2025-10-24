@@ -19,7 +19,8 @@ const COLUMNS_TO_KEEP = [
     'Total Bedrooms',
     'Total Bathrooms',
     'Total Square Feet',
-    'Year Built'
+    'Year Built',
+    'Property Type'
 ];
 
 // Quartile colors (light to dark green)
