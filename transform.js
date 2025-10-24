@@ -184,10 +184,21 @@ function transformData(workbook) {
         const minPrice = Math.min(...prices);
         const maxPrice = Math.max(...prices);
 
+        // Calculate average prices for each quartile
+        const q1Prices = prices.slice(0, q1End);
+        const q2Prices = prices.slice(q1End, q2End);
+        const q3Prices = prices.slice(q2End, q3End);
+        const q4Prices = prices.slice(q3End);
+
+        const avgQ1 = Math.round(q1Prices.reduce((a, b) => a + b, 0) / q1Prices.length);
+        const avgQ2 = Math.round(q2Prices.reduce((a, b) => a + b, 0) / q2Prices.length);
+        const avgQ3 = Math.round(q3Prices.reduce((a, b) => a + b, 0) / q3Prices.length);
+        const avgQ4 = Math.round(q4Prices.reduce((a, b) => a + b, 0) / q4Prices.length);
+
         statsData = {
             recordCount: nRows,
             priceRange: `$${minPrice.toLocaleString()} - $${maxPrice.toLocaleString()}`,
-            quartileSizes: `Q1:${q1End}, Q2:${q2End - q1End}, Q3:${q3End - q2End}, Q4:${nRows - q3End}`
+            quartileAvgPrices: `Q1: $${avgQ1.toLocaleString()}\nQ2: $${avgQ2.toLocaleString()}\nQ3: $${avgQ3.toLocaleString()}\nQ4: $${avgQ4.toLocaleString()}`
         };
 
         // Step 5: Create new workbook
@@ -405,7 +416,7 @@ function showResults() {
     // Update stats
     document.getElementById('recordCount').textContent = statsData.recordCount;
     document.getElementById('priceRange').textContent = statsData.priceRange;
-    document.getElementById('quartileSizes').textContent = statsData.quartileSizes;
+    document.getElementById('quartileAvgPrices').textContent = statsData.quartileAvgPrices;
 }
 
 function showError(message) {
