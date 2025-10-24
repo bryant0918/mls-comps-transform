@@ -99,13 +99,13 @@ function processFile(file) {
 
     // Read the file
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             updateProgress(30);
             showProgress('Processing data...');
             
             const data = e.target.result;
-            transformData(data);
+            await transformData(data);
             
         } catch (error) {
             showError(`Error reading file: ${error.message}`);
@@ -121,60 +121,34 @@ function processFile(file) {
 
 async function transformData(data) {
     try {
-        // Step 1: Read the workbook with ExcelJS
+        // Step 1: Read the workbook with SheetJS (supports both .xls and .xlsx)
         showProgress('Loading raw data...');
         updateProgress(40);
         
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(data);
+        const workbook = XLSX.read(data, { type: 'array' });
         
         updateProgress(50);
         
         // Find the data sheet
-        let worksheet;
         let sheetName = 'Existing Comps Data';
         
-        worksheet = workbook.getWorksheet(sheetName);
-        
         // If "Existing Comps Data" doesn't exist, try to use the only sheet if there's just one
-        if (!worksheet) {
-            if (workbook.worksheets.length === 1) {
-                worksheet = workbook.worksheets[0];
-                sheetName = worksheet.name;
+        if (!workbook.SheetNames.includes(sheetName)) {
+            if (workbook.SheetNames.length === 1) {
+                sheetName = workbook.SheetNames[0];
                 console.log(`Using single sheet: "${sheetName}"`);
             } else {
-                const sheetNames = workbook.worksheets.map(ws => ws.name).join(', ');
-                throw new Error(`Sheet "Existing Comps Data" not found. Your file has ${workbook.worksheets.length} sheets: ${sheetNames}. Please make sure your raw data sheet is named "Existing Comps Data".`);
+                throw new Error(`Sheet "Existing Comps Data" not found. Your file has ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}. Please make sure your raw data sheet is named "Existing Comps Data".`);
             }
         }
+        
+        const worksheet = workbook.Sheets[sheetName];
         
         // Step 2: Extract data
         showProgress('Extracting data...');
         updateProgress(60);
         
-        const rawData = [];
-        const headers = [];
-        
-        worksheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1) {
-                // Header row
-                row.eachCell((cell) => {
-                    headers.push(cell.value);
-                });
-            } else {
-                // Data rows
-                const rowData = {};
-                row.eachCell((cell, colNumber) => {
-                    const header = headers[colNumber - 1];
-                    if (header) {
-                        rowData[header] = cell.value;
-                    }
-                });
-                if (Object.keys(rowData).length > 0) {
-                    rawData.push(rowData);
-                }
-            }
-        });
+        const rawData = XLSX.utils.sheet_to_json(worksheet);
         
         if (rawData.length === 0) {
             throw new Error('No data found in the sheet.');
