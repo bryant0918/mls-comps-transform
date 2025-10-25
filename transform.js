@@ -237,10 +237,16 @@ async function createFormattedWorkbook(data, q1End, q2End, q3End) {
     titleCell.value = 'Existing Sold Comps';
     titleCell.font = { bold: true, size: 14 };
     
-    // Row 3: Subdivision and quartile headers
-    const subdivCell = worksheet.getCell('C3');
-    subdivCell.value = 'Pagoda Grove Circle';
-    subdivCell.font = { bold: true };
+    // Row 3: Date and quartile headers
+    const dateCell = worksheet.getCell('C3');
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    dateCell.value = formattedDate;
+    dateCell.font = { bold: true };
     
     const quartileHeaders = [
         { cell: 'I3', value: '1st Quartile' },
@@ -264,24 +270,15 @@ async function createFormattedWorkbook(data, q1End, q2End, q3End) {
     worksheet.getCell('C6').value = 'Quartile Size';
     worksheet.getCell('D6').value = { formula: 'D5/4' };
     
-    // Row 7-11: Criteria
-    worksheet.getCell('C7').value = 'Criteria';
-    worksheet.getCell('C8').value = 'Sold last year';
-    worksheet.getCell('C9').value = 'South of 7800, West of 2200, N';
-    worksheet.getCell('C10').value = 'SFH, not manufactured';
-    const sortedCell = worksheet.getCell('C11');
-    sortedCell.value = 'Sorted by Sold Price';
-    sortedCell.font = { bold: true };
-    
     // Statistics with formulas
     const stats = [
-        { label: 'Avg Sold Price', col: 'L', row: 4 },
-        { label: 'Avg SF', col: 'O', row: 5 },
-        { label: 'Avg Bed', col: 'M', row: 6 },
-        { label: 'Avg Year Built', col: 'P', row: 7 },
-        { label: 'Avg Acres', col: 'C', row: 8 },
-        { label: 'Avg DOM', col: 'E', row: 9 },
-        { label: 'Avg Price/SF', col: 'I', row: 10 }
+        { label: 'Avg Sold Price', col: 'L', row: 4, format: '$#,##0' },
+        { label: 'Avg SF', col: 'O', row: 5, format: '0' },
+        { label: 'Avg Bed', col: 'M', row: 6, format: '0.0' },
+        { label: 'Avg Year Built', col: 'P', row: 7, format: '0' },
+        { label: 'Avg Acres', col: 'C', row: 8, format: '0.00' },
+        { label: 'Avg DOM', col: 'E', row: 9, format: '0.00' },
+        { label: 'Avg Price/SF', col: 'I', row: 10, format: '$#,##0.00' }
     ];
     
     stats.forEach(stat => {
@@ -289,10 +286,23 @@ async function createFormattedWorkbook(data, q1End, q2End, q3End) {
         labelCell.value = stat.label;
         labelCell.font = { bold: true };
         
-        worksheet.getCell(`I${stat.row}`).value = { formula: `AVERAGE(${stat.col}$15:${stat.col}$${14 + q1End})` };
-        worksheet.getCell(`J${stat.row}`).value = { formula: `AVERAGE(${stat.col}$${15 + q1End}:${stat.col}$${14 + q2End})` };
-        worksheet.getCell(`K${stat.row}`).value = { formula: `AVERAGE(${stat.col}$${15 + q2End}:${stat.col}$${14 + q3End})` };
-        worksheet.getCell(`L${stat.row}`).value = { formula: `AVERAGE(${stat.col}$${15 + q3End}:${stat.col}$${14 + data.length})` };
+        // Set formulas and apply number formatting
+        const cells = [
+            worksheet.getCell(`I${stat.row}`),
+            worksheet.getCell(`J${stat.row}`),
+            worksheet.getCell(`K${stat.row}`),
+            worksheet.getCell(`L${stat.row}`)
+        ];
+        
+        cells[0].value = { formula: `AVERAGE(${stat.col}$15:${stat.col}$${14 + q1End})` };
+        cells[1].value = { formula: `AVERAGE(${stat.col}$${15 + q1End}:${stat.col}$${14 + q2End})` };
+        cells[2].value = { formula: `AVERAGE(${stat.col}$${15 + q2End}:${stat.col}$${14 + q3End})` };
+        cells[3].value = { formula: `AVERAGE(${stat.col}$${15 + q3End}:${stat.col}$${14 + data.length})` };
+        
+        // Apply number format to all quartile cells
+        cells.forEach(cell => {
+            cell.numFmt = stat.format;
+        });
     });
     
     // Row 14: Column headers
